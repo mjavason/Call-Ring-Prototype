@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Simple WebRTC Example</title>
+</head>
+<body>
+  <h1>WebRTC Peer Connection</h1>
+  
+  <h2>Local Video</h2>
+  <video id="localVideo" autoplay playsinline></video>
+  
+  <h2>Remote Video</h2>
+  <video id="remoteVideo" autoplay playsinline></video>
+  
+  <h2>Signaling</h2>
+  <textarea id="offer" placeholder="Paste the offer here"></textarea>
+  <textarea id="answer" placeholder="Paste the answer here"></textarea>
+  
+  <button id="startButton">Start</button>
+  <button id="callButton">Call</button>
+  <button id="answerButton">Answer</button>
+
+  <script src="main.js"></script>
+</body>
+</html>
