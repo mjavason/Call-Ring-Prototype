@@ -22,30 +22,33 @@ const io = new socketIo.Server(httpServer, {
 let users = {};
 
 io.on('connection', (socket) => {
-    console.log('A user connected:', socket.id);
-  
-    // Store the connected user's ID
-    socket.on('register', (userId) => {
-      users[userId] = socket.id;
-      socket.userId = userId;
-      console.log('User registered:', userId);
-    });
-  
-    // Handle signaling messages
-    socket.on('signal', (data) => {
-      console.log('Signal received', data);
-      const recipientSocketId = users[data.to];
-      if (recipientSocketId) {
-        io.to(recipientSocketId).emit('signal', data);
-      }
-    });
-  
-    // Handle disconnection
-    socket.on('disconnect', () => {
-      console.log('A user disconnected:', socket.userId);
-      delete users[socket.userId];
-    });
+  console.log('A user connected:', socket.id);
+
+  // Store the connected user's ID
+  socket.on('register', (userId) => {
+    users[userId] = socket.id;
+    socket.userId = userId;
+    console.log('User registered:', userId);
   });
+
+  // Handle signaling messages
+  socket.on('signal', (data) => {
+    console.log('Signal received', data);
+    const recipientSocketId = users[data.to];
+    if (recipientSocketId) {
+      io.to(recipientSocketId).emit('signal', data);
+      console.log(`Forwarded signal to: ${data.to}`);
+    } else {
+      console.log(`Recipient not found for: ${data.to}`);
+    }
+  });
+
+  // Handle disconnection
+  socket.on('disconnect', () => {
+    console.log('A user disconnected:', socket.userId);
+    delete users[socket.userId];
+  });
+});
 
 httpServer.listen(3000, () => {
   console.log('Server is running on http://localhost:3000');

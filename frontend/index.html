@@ -18,87 +18,97 @@
       const socket = io('http://localhost:3000');
       let userId;
       let calleeId;
-
-      const peerConnection = new RTCPeerConnection();
+      const peerConnection = new RTCPeerConnection({
+        iceServers: [
+          {
+            urls: [
+              'stun:stun4.l.google.com:19302',
+              'stun:stun3.l.google.com:19302',
+            ],
+          },
+        ],
+      });
       const remoteVideo = document.getElementById('remoteVideo');
 
-      peerConnection.ontrack = (event) => {
-        console.log('Received remote track event:', event);
-        remoteVideo.srcObject = event.streams[0];
-        console.log('Remote video stream set.');
-      };
-
-      // Register the user with the server
-      document.getElementById('register').onclick = () => {
+      async function registerUser() {
         userId = document.getElementById('userId').value;
-        console.log('Register button clicked. User ID:', userId);
+        console.log(`Registering user with ID: ${userId}`);
         socket.emit('register', userId);
-        console.log('Sent register event to server.');
-      };
+      }
 
-      // Handling incoming signals
-      socket.on('signal', async (data) => {
-        console.log('Signal received:', data);
-        if (data.type === 'offer') {
-          console.log('Received offer from:', data.from);
-          await peerConnection.setRemoteDescription(
-            new RTCSessionDescription(data)
-          );
-          console.log('Set remote description with the received offer.');
-
-          const answer = await peerConnection.createAnswer();
-          await peerConnection.setLocalDescription(answer);
-          console.log('Created and set local description with answer.');
+      async function createOfferAndSignal() {
+        calleeId = document.getElementById('calleeId').value;
+        console.log(`Creating offer for callee with ID: ${calleeId}`);
+        try {
+          const offer = await peerConnection.createOffer();
+          console.log('Created offer:', offer);
+          await peerConnection.setLocalDescription(offer);
+          console.log('Set local description with offer:', offer);
 
           socket.emit('signal', {
-            type: 'answer',
+            type: 'offer',
             sdp: peerConnection.localDescription.sdp,
-            to: data.from,
             from: userId,
+            to: calleeId,
           });
-          console.log('Sent answer to:', data.from);
-        } else if (data.type === 'answer') {
-          console.log('Received answer from:', data.from);
-          await peerConnection.setRemoteDescription(
-            new RTCSessionDescription(data)
-          );
-          console.log('Set remote description with the received answer.');
-        } else if (data.type === 'candidate') {
-          ////////////////////////////////////////////////////////////////
-          console.log('Received ICE candidate from:', data.from);
-          await peerConnection.addIceCandidate(
-            new RTCIceCandidate(data.candidate)
-          );
-          console.log('Added ICE candidate.');
+          console.log(`Sent offer to callee ID: ${calleeId}`);
+        } catch (error) {
+          console.error('Error creating offer:', error);
         }
-      });
+      }
 
-      // Creating the call
-      document.getElementById('call').onclick = async () => {
-        calleeId = document.getElementById('calleeId').value;
-        console.log('Call button clicked. Callee ID:', calleeId);
+      async function handleSignal(data) {
+        console.log('Signal received:', data);
+        try {
+          if (data.type === 'offer') {
+            console.log(`Received offer from: ${data.from}`);
+            await peerConnection.setRemoteDescription(
+              new RTCSessionDescription(data)
+            );
+            console.log('Set remote description with received offer.');
 
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
-        console.log('Created and set local description with offer.');
+            const answer = await peerConnection.createAnswer();
+            console.log('Created answer:', answer);
+            await peerConnection.setLocalDescription(answer);
+            console.log('Set local description with answer:', answer);
 
-        socket.emit('signal', {
-          type: 'offer',
-          sdp: peerConnection.localDescription.sdp,
-          from: userId,
-          to: calleeId,
-        });
-        console.log('Sent offer to:', calleeId);
-      };
+            socket.emit('signal', {
+              type: 'answer',
+              sdp: peerConnection.localDescription.sdp,
+              to: data.from,
+              from: userId,
+            });
+            console.log(`Sent answer to: ${data.from}`);
+          } else if (data.type === 'answer') {
+            console.log(`Received answer from: ${data.from}`);
+            await peerConnection.setRemoteDescription(
+              new RTCSessionDescription({ type: 'answer', sdp: data.sdp })
+            );
+            console.log('Set remote description with received answer.');
+          } else if (data.type === 'candidate') {
+            console.log(`Received ICE candidate from: ${data.from}`);
+            await peerConnection.addIceCandidate(
+              new RTCIceCandidate(data.candidate)
+            );
+            console.log('Added ICE candidate.');
+          }
+        } catch (error) {
+          console.error('Error handling signal:', error);
+        }
+      }
 
-      // Hanging up the call
-      document.getElementById('hangup').onclick = () => {
+      document
+        .getElementById('register')
+        .addEventListener('click', registerUser);
+      document
+        .getElementById('call')
+        .addEventListener('click', createOfferAndSignal);
+      document.getElementById('hangup').addEventListener('click', () => {
         console.log('Hang Up button clicked. Closing peer connection.');
         peerConnection.close();
         console.log('Peer connection closed.');
-      };
+      });
 
-      // ICE candidates
       peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
           console.log('Sending ICE candidate to:', calleeId);
@@ -108,8 +118,18 @@
             to: calleeId,
             from: userId,
           });
+        } else {
+          console.log('End of candidates.');
         }
       };
+
+      peerConnection.ontrack = (event) => {
+        console.log('Received remote track event:', event);
+        remoteVideo.srcObject = event.streams[0];
+        console.log('Remote video stream set.');
+      };
+
+      socket.on('signal', handleSignal);
     </script>
   </body>
 </html>
