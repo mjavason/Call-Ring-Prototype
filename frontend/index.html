@@ -15,7 +15,7 @@
     <video id="remoteVideo" autoplay></video>
 
     <script>
-      const socket = io('http://localhost:3000');
+      const socket = io('https://call-ring-prototype-backend.onrender.com');
       let userId;
       let calleeId;
       const peerConnection = new RTCPeerConnection({
