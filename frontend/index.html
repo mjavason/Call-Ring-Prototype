@@ -110,18 +110,24 @@
       });
 
       peerConnection.onicecandidate = (event) => {
-        if (event.candidate) {
-          console.log('Sending ICE candidate to:', calleeId);
-          socket.emit('signal', {
-            type: 'candidate',
-            candidate: event.candidate,
-            to: calleeId,
-            from: userId,
-          });
-        } else {
-          console.log('End of candidates.');
-        }
-      };
+  if (event.candidate) {
+    console.log('Sending ICE candidate to:', calleeId);
+    // Ensure setLocalDescription is called before emitting ICE candidate
+    if (peerConnection.localDescription) {
+      socket.emit('signal', {
+        type: 'candidate',
+        candidate: event.candidate,
+        to: calleeId,
+        from: userId,
+      });
+    } else {
+      console.warn('Local description not set yet, waiting to emit ICE candidate.');
+    }
+  } else {
+    console.log('End of candidates.');
+  }
+};
+
 
       peerConnection.ontrack = (event) => {
         console.log('Received remote track event:', event);
