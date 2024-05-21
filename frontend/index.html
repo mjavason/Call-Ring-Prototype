@@ -3,6 +3,16 @@
   <head>
     <title>WebRTC Audio Call</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+      #log {
+        border: 1px solid #ccc;
+        padding: 10px;
+        width: 80%;
+        height: 200px;
+        overflow-y: scroll;
+        margin: 10px 0;
+      }
+    </style>
   </head>
   <body>
     <h1>WebRTC Audio Call</h1>
@@ -13,16 +23,26 @@
     <button id="hangup">Hang Up</button>
     <audio id="localAudio" autoplay muted></audio>
     <audio id="remoteAudio" autoplay></audio>
+    <div id="log"></div>
 
     <script>
-      // https://call-ring-prototype-backend.onrender.com/   live site
-      // http://localhost:3000    local site
-      const socket = io('https://call-ring-prototype-backend.onrender.com/');
+      //Live API https://call-ring-prototype-backend.onrender.com
+      //Local http://localhost:3000
+
+      const socket = io('https://call-ring-prototype-backend.onrender.com');
 
       const userIdInput = document.getElementById('userId');
       const calleeIdInput = document.getElementById('calleeId');
       const localAudio = document.getElementById('localAudio');
       const remoteAudio = document.getElementById('remoteAudio');
+      const logDiv = document.getElementById('log');
+
+      function log(message) {
+        const p = document.createElement('p');
+        p.textContent = message;
+        logDiv.appendChild(p);
+        logDiv.scrollTop = logDiv.scrollHeight;  // Scroll to the bottom
+      }
 
       const peerConnection = new RTCPeerConnection({
         iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
@@ -32,39 +52,38 @@
 
       async function startLocalStream() {
         try {
-          localStream = await navigator.mediaDevices.getUserMedia({
-            audio: true,
-          });
+          localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
           localAudio.srcObject = localStream;
-          localStream
-            .getTracks()
-            .forEach((track) => peerConnection.addTrack(track, localStream));
+          localStream.getTracks().forEach((track) => peerConnection.addTrack(track, localStream));
+          log('Local stream started');
         } catch (error) {
-          console.error('Error accessing media devices.', error);
+          log('Error accessing media devices: ' + error);
         }
       }
 
       document.getElementById('register').addEventListener('click', () => {
         socket.emit('register', userIdInput.value);
+        log('Registered with ID: ' + userIdInput.value);
         startLocalStream();
       });
 
       document.getElementById('call').addEventListener('click', async () => {
-        const offer = await peerConnection.createOffer({
-          offerToReceiveAudio: 1,
-        });
+        const offer = await peerConnection.createOffer({ offerToReceiveAudio: 1 });
         await peerConnection.setLocalDescription(offer);
+        log('Call initiated. Offer created and set as local description.');
         socket.emit('signal', {
           type: 'offer',
           sdp: peerConnection.localDescription.sdp,
           from: userIdInput.value,
           to: calleeIdInput.value,
         });
+        log('Offer sent to callee ID: ' + calleeIdInput.value);
       });
 
       document.getElementById('hangup').addEventListener('click', () => {
         peerConnection.close();
         localStream.getTracks().forEach((track) => track.stop());
+        log('Call ended and local stream stopped.');
       });
 
       peerConnection.onicecandidate = (event) => {
@@ -75,18 +94,19 @@
             from: userIdInput.value,
             to: calleeIdInput.value,
           });
+          log('ICE candidate sent.');
         }
       };
 
       peerConnection.ontrack = (event) => {
         remoteAudio.srcObject = event.streams[0];
+        log('Remote stream received.');
       };
 
       socket.on('signal', async (data) => {
+        log('Signal received of type: ' + data.type);
         if (data.type === 'offer') {
-          await peerConnection.setRemoteDescription(
-            new RTCSessionDescription(data)
-          );
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(data));
           const answer = await peerConnection.createAnswer();
           await peerConnection.setLocalDescription(answer);
           socket.emit('signal', {
@@ -95,14 +115,13 @@
             to: data.from,
             from: userIdInput.value,
           });
+          log('Received offer, created answer, and sent back.');
         } else if (data.type === 'answer') {
-          await peerConnection.setRemoteDescription(
-            new RTCSessionDescription(data)
-          );
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(data));
+          log('Received answer and set as remote description.');
         } else if (data.type === 'candidate') {
-          await peerConnection.addIceCandidate(
-            new RTCIceCandidate(data.candidate)
-          );
+          await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+          log('Received and added ICE candidate.');
         }
       });
     </script>
