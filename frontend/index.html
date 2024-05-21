@@ -14,144 +14,72 @@
     <video id="remoteVideo" autoplay></video>
 
     <script>
-      // Initialize socket connection
       const socket = io('http://localhost:3000');
 
-      // DOM elements
       const userIdInput = document.getElementById('userId');
       const calleeIdInput = document.getElementById('calleeId');
       const remoteVideo = document.getElementById('remoteVideo');
 
-      // WebRTC configuration
       const peerConnection = new RTCPeerConnection({
-        iceServers: [
-          {
-            urls: [
-              'stun:stun4.l.google.com:19302',
-              'stun:stun3.l.google.com:19302',
-            ],
-          },
-        ],
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
       });
 
-      // Register user with the server
-      function registerUser() {
-        const userId = userIdInput.value;
-        console.log(`Registering user with ID: ${userId}`);
-        socket.emit('register', userId);
-      }
+      document.getElementById('register').addEventListener('click', () => {
+        socket.emit('register', userIdInput.value);
+      });
 
-      // Create offer and send it to the server
-      async function createOfferAndSignal() {
-        const calleeId = calleeIdInput.value;
-        console.log(`Creating offer for callee with ID: ${calleeId}`);
+      document.getElementById('call').addEventListener('click', async () => {
+        const offer = await peerConnection.createOffer({
+          offerToReceiveAudio: 1,
+          offerToReceiveVideo: 1,
+        });
+        await peerConnection.setLocalDescription(offer);
+        socket.emit('signal', {
+          type: 'offer',
+          sdp: peerConnection.localDescription.sdp,
+          from: userIdInput.value,
+          to: calleeIdInput.value,
+          offer,
+        });
+      });
 
-        try {
-          const offer = await peerConnection.createOffer();
-          console.log('Created offer:', offer);
-
-          await peerConnection.setLocalDescription(offer);
-          console.log('Set local description with offer:', offer);
-
-          socket.emit('signal', {
-            type: 'offer',
-            sdp: peerConnection.localDescription.sdp,
-            from: userIdInput.value,
-            to: calleeId,
-          });
-          console.log(`Sent offer to callee ID: ${calleeId}`);
-        } catch (error) {
-          console.error('Error creating offer:', error);
-        }
-      }
-
-      // Handle signals from the server
-      async function handleSignal(data) {
-        console.log('Signal received:', data);
-
-        try {
-          if (data.type === 'offer') {
-            console.log(`Received offer from: ${data.from}`);
-            await peerConnection.setRemoteDescription(
-              new RTCSessionDescription(data)
-            );
-            console.log('Set remote description with received offer.');
-
-            const answer = await peerConnection.createAnswer();
-            console.log('Created answer:', answer);
-
-            await peerConnection.setLocalDescription(answer);
-            console.log('Set local description with answer:', answer);
-
-            socket.emit('signal', {
-              type: 'answer',
-              sdp: peerConnection.localDescription.sdp,
-              to: data.from,
-              from: userIdInput.value,
-            });
-            console.log(`Sent answer to: ${data.from}`);
-          } else if (data.type === 'answer') {
-            console.log(`Received answer from: ${data.from}`);
-            await peerConnection.setRemoteDescription(
-              new RTCSessionDescription({ type: 'answer', sdp: data.sdp })
-            );
-            console.log('Set remote description with received answer.');
-          } else if (data.type === 'candidate') {
-            console.log(`Received ICE candidate from: ${data.from}`);
-            await peerConnection.addIceCandidate(
-              new RTCIceCandidate(data.candidate)
-            );
-            console.log('Added ICE candidate.');
-          }
-        } catch (error) {
-          console.error('Error handling signal:', error);
-        }
-      }
-
-      // Event listeners
-      document
-        .getElementById('register')
-        .addEventListener('click', registerUser);
-      document
-        .getElementById('call')
-        .addEventListener('click', createOfferAndSignal);
       document.getElementById('hangup').addEventListener('click', () => {
-        console.log('Hang Up button clicked. Closing peer connection.');
         peerConnection.close();
-        console.log('Peer connection closed.');
       });
 
-      // ICE candidate event
       peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
-          console.log('Sending ICE candidate to:', calleeId);
-          // Ensure setLocalDescription is called before emitting ICE candidate
-          if (peerConnection.localDescription) {
-            socket.emit('signal', {
-              type: 'candidate',
-              candidate: event.candidate,
-              to: calleeId,
-              from: userId,
-            });
-          } else {
-            console.warn(
-              'Local description not set yet, waiting to emit ICE candidate.'
-            );
-          }
-        } else {
-          console.log('End of candidates.');
+          socket.emit('signal', {
+            type: 'candidate',
+            candidate: event.candidate,
+            from: userIdInput.value,
+            to: calleeIdInput.value,
+          });
         }
       };
 
-      // Track event
       peerConnection.ontrack = (event) => {
-        console.log('Received remote track event:', event);
         remoteVideo.srcObject = event.streams[0];
-        console.log('Remote video stream set.');
       };
 
-      // Socket signal event
-      socket.on('signal', handleSignal);
+      socket.on('signal', async (data) => {
+        if (data.type === 'offer') {
+          await peerConnection.setRemoteDescription(data.offer);
+          const answer = await peerConnection.createAnswer();
+          await peerConnection.setLocalDescription(answer);
+          socket.emit('signal', {
+            type: 'answer',
+            sdp: peerConnection.localDescription.sdp,
+            to: data.from,
+            from: userIdInput.value,
+            answer,
+          });
+        } else if (data.type === 'answer') {
+          await peerConnection.setRemoteDescription(data.answer);
+        } else if (data.type === 'candidate') {
+          await peerConnection.addIceCandidate(data.candidate);
+        }
+      });
     </script>
   </body>
 </html>

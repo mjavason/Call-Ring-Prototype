@@ -48,6 +48,16 @@ io.on('connection', (socket) => {
     console.log('A user disconnected:', socket.userId);
     delete users[socket.userId];
   });
+
+  // // Catch-all event listener
+  // socket.onAny((event, ...args) => {
+  //   console.log(`Received event: ${event}`, args);
+  // });
+
+  // Error handling
+  socket.on('error', (error) => {
+    console.error('Socket error:', error);
+  });
 });
 
 httpServer.listen(3000, () => {
