@@ -29,7 +29,7 @@
       //Live API https://call-ring-prototype-backend.onrender.com
       //Local http://localhost:3000
 
-      const socket = io('https://call-ring-prototype-backend.onrender.com');
+      const socket = io('http://localhost:3000');
 
       const userIdInput = document.getElementById('userId');
       const calleeIdInput = document.getElementById('calleeId');
@@ -41,20 +41,95 @@
         const p = document.createElement('p');
         p.textContent = message;
         logDiv.appendChild(p);
-        logDiv.scrollTop = logDiv.scrollHeight;  // Scroll to the bottom
+        logDiv.scrollTop = logDiv.scrollHeight; // Scroll to the bottom
       }
 
       const peerConnection = new RTCPeerConnection({
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          { urls: 'stun:stun3.l.google.com:19302' },
+          { urls: 'stun:stun4.l.google.com:19302' },
+          {
+            urls: 'stun:stun.services.mozilla.com',
+            username: '',
+            credential: '',
+          },
+          {
+            urls: 'stun:stun.stunprotocol.org:3478',
+            username: '',
+            credential: '',
+          },
+          {
+            urls: 'stun:stun.voipbuster.com',
+            username: '',
+            credential: '',
+          },
+          {
+            urls: 'stun:stun.voipstunt.com',
+            username: '',
+            credential: '',
+          },
+          {
+            urls: 'stun:stun.voxgratia.org',
+            username: '',
+            credential: '',
+          },
+          {
+            urls: 'stun:stun.xten.com',
+            username: '',
+            credential: '',
+          },
+          {
+            urls: 'stun:stun.schlund.de',
+            username: '',
+            credential: '',
+          },
+          {
+            urls: 'stun:stun.iptel.org',
+            username: '',
+            credential: '',
+          },
+          {
+            urls: 'turn:numb.viagenie.ca',
+            username: 'webrtc@live.com',
+            credential: 'password',
+          },
+          {
+            urls: 'turn:numb.viagenie.ca:3478',
+            username: 'webrtc@live.com',
+            credential: 'password',
+          },
+          {
+            urls: 'turn:turn.bistri.com:80',
+            username: 'homeo',
+            credential: 'homeo',
+          },
+          {
+            urls: 'turn:turn.bistri.com:3478',
+            username: 'homeo',
+            credential: 'homeo',
+          },
+          {
+            urls: 'turn:turn.anyfirewall.com:443',
+            username: 'webrtc',
+            credential: 'webrtc',
+          },
+        ],
       });
 
       let localStream;
 
       async function startLocalStream() {
         try {
-          localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          localStream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+          });
           localAudio.srcObject = localStream;
-          localStream.getTracks().forEach((track) => peerConnection.addTrack(track, localStream));
+          localStream
+            .getTracks()
+            .forEach((track) => peerConnection.addTrack(track, localStream));
           log('Local stream started');
         } catch (error) {
           log('Error accessing media devices: ' + error);
@@ -68,7 +143,9 @@
       });
 
       document.getElementById('call').addEventListener('click', async () => {
-        const offer = await peerConnection.createOffer({ offerToReceiveAudio: 1 });
+        const offer = await peerConnection.createOffer({
+          offerToReceiveAudio: 1,
+        });
         await peerConnection.setLocalDescription(offer);
         log('Call initiated. Offer created and set as local description.');
         socket.emit('signal', {
@@ -106,7 +183,9 @@
       socket.on('signal', async (data) => {
         log('Signal received of type: ' + data.type);
         if (data.type === 'offer') {
-          await peerConnection.setRemoteDescription(new RTCSessionDescription(data));
+          await peerConnection.setRemoteDescription(
+            new RTCSessionDescription(data)
+          );
           const answer = await peerConnection.createAnswer();
           await peerConnection.setLocalDescription(answer);
           socket.emit('signal', {
@@ -117,10 +196,14 @@
           });
           log('Received offer, created answer, and sent back.');
         } else if (data.type === 'answer') {
-          await peerConnection.setRemoteDescription(new RTCSessionDescription(data));
+          await peerConnection.setRemoteDescription(
+            new RTCSessionDescription(data)
+          );
           log('Received answer and set as remote description.');
         } else if (data.type === 'candidate') {
-          await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+          await peerConnection.addIceCandidate(
+            new RTCIceCandidate(data.candidate)
+          );
           log('Received and added ICE candidate.');
         }
       });
