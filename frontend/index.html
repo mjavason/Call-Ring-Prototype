@@ -15,7 +15,9 @@
     <audio id="remoteAudio" autoplay></audio>
 
     <script>
-      const socket = io('http://localhost:3000');
+      // https://call-ring-prototype-backend.onrender.com/   live site
+      // http://localhost:3000    local site
+      const socket = io('https://call-ring-prototype-backend.onrender.com/');
 
       const userIdInput = document.getElementById('userId');
       const calleeIdInput = document.getElementById('calleeId');
@@ -30,9 +32,13 @@
 
       async function startLocalStream() {
         try {
-          localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          localStream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+          });
           localAudio.srcObject = localStream;
-          localStream.getTracks().forEach((track) => peerConnection.addTrack(track, localStream));
+          localStream
+            .getTracks()
+            .forEach((track) => peerConnection.addTrack(track, localStream));
         } catch (error) {
           console.error('Error accessing media devices.', error);
         }
@@ -78,7 +84,9 @@
 
       socket.on('signal', async (data) => {
         if (data.type === 'offer') {
-          await peerConnection.setRemoteDescription(new RTCSessionDescription(data));
+          await peerConnection.setRemoteDescription(
+            new RTCSessionDescription(data)
+          );
           const answer = await peerConnection.createAnswer();
           await peerConnection.setLocalDescription(answer);
           socket.emit('signal', {
@@ -88,9 +96,13 @@
             from: userIdInput.value,
           });
         } else if (data.type === 'answer') {
-          await peerConnection.setRemoteDescription(new RTCSessionDescription(data));
+          await peerConnection.setRemoteDescription(
+            new RTCSessionDescription(data)
+          );
         } else if (data.type === 'candidate') {
-          await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+          await peerConnection.addIceCandidate(
+            new RTCIceCandidate(data.candidate)
+          );
         }
       });
     </script>
