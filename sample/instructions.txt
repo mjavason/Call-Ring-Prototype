@@ -1,9 +1,0 @@
-Instructions
-Open the HTML file in two different browsers or tabs.
-On both clients, click the "Start" button to start the local video stream.
-On one client (the caller), click the "Call" button. Copy the generated offer from the "Offer" textarea.
-Paste the offer into the "Offer" textarea on the other client (the answerer), and click the "Answer" button. Copy the generated answer from the "Answer" textarea.
-Paste the answer into the "Answer" textarea on the caller client.
-This setup will establish a WebRTC connection between the two clients, enabling video streaming between them.
-
-Note: This example uses a STUN server (stun:stun.l.google.com:19302) for NAT traversal. For production use, you should consider using a TURN server as well for better connectivity.
