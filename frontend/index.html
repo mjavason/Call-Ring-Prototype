@@ -12,6 +12,21 @@
         overflow-y: scroll;
         margin: 10px 0;
       }
+      #loading {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        font-size: 24px;
+        z-index: 1000;
+        display: none; /* Initially hidden */
+      }
     </style>
   </head>
   <body>
@@ -24,6 +39,7 @@
     <audio id="localAudio" autoplay muted></audio>
     <audio id="remoteAudio" autoplay></audio>
     <div id="log"></div>
+    <div id="loading">Loading, please wait...</div>
 
     <script>
       //Live API https://call-ring-prototype-backend.onrender.com
@@ -36,12 +52,21 @@
       const localAudio = document.getElementById('localAudio');
       const remoteAudio = document.getElementById('remoteAudio');
       const logDiv = document.getElementById('log');
+      const loadingDiv = document.getElementById('loading');
 
       function log(message) {
         const p = document.createElement('p');
         p.textContent = message;
         logDiv.appendChild(p);
         logDiv.scrollTop = logDiv.scrollHeight; // Scroll to the bottom
+      }
+
+      function showLoading() {
+        loadingDiv.style.display = 'flex';
+      }
+
+      function hideLoading() {
+        loadingDiv.style.display = 'none';
       }
 
       const peerConnection = new RTCPeerConnection({
@@ -51,46 +76,14 @@
           { urls: 'stun:stun2.l.google.com:19302' },
           { urls: 'stun:stun3.l.google.com:19302' },
           { urls: 'stun:stun4.l.google.com:19302' },
-          {
-            urls: 'stun:stun.services.mozilla.com',
-            username: '',
-            credential: '',
-          },
-          {
-            urls: 'stun:stun.stunprotocol.org:3478',
-            username: '',
-            credential: '',
-          },
-          {
-            urls: 'stun:stun.voipbuster.com',
-            username: '',
-            credential: '',
-          },
-          {
-            urls: 'stun:stun.voipstunt.com',
-            username: '',
-            credential: '',
-          },
-          {
-            urls: 'stun:stun.voxgratia.org',
-            username: '',
-            credential: '',
-          },
-          {
-            urls: 'stun:stun.xten.com',
-            username: '',
-            credential: '',
-          },
-          {
-            urls: 'stun:stun.schlund.de',
-            username: '',
-            credential: '',
-          },
-          {
-            urls: 'stun:stun.iptel.org',
-            username: '',
-            credential: '',
-          },
+          { urls: 'stun:stun.services.mozilla.com' },
+          { urls: 'stun:stun.stunprotocol.org:3478' },
+          { urls: 'stun:stun.voipbuster.com' },
+          { urls: 'stun:stun.voipstunt.com' },
+          { urls: 'stun:stun.voxgratia.org' },
+          { urls: 'stun:stun.xten.com' },
+          { urls: 'stun:stun.schlund.de' },
+          { urls: 'stun:stun.iptel.org' },
           {
             urls: 'turn:numb.viagenie.ca',
             username: 'webrtc@live.com',
@@ -120,6 +113,7 @@
       });
 
       let localStream;
+      let iceCandidatesBuffer = [];
 
       async function startLocalStream() {
         try {
@@ -143,6 +137,7 @@
       });
 
       document.getElementById('call').addEventListener('click', async () => {
+        showLoading();
         const offer = await peerConnection.createOffer({
           offerToReceiveAudio: 1,
         });
@@ -160,18 +155,30 @@
       document.getElementById('hangup').addEventListener('click', () => {
         peerConnection.close();
         localStream.getTracks().forEach((track) => track.stop());
+        hideLoading();
         log('Call ended and local stream stopped.');
       });
 
       peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
-          socket.emit('signal', {
-            type: 'candidate',
-            candidate: event.candidate,
-            from: userIdInput.value,
-            to: calleeIdInput.value,
+          iceCandidatesBuffer.push(event.candidate);
+          log('ICE candidate buffered.');
+        }
+      };
+
+      peerConnection.onicegatheringstatechange = () => {
+        if (peerConnection.iceGatheringState === 'complete') {
+          iceCandidatesBuffer.forEach((candidate) => {
+            socket.emit('signal', {
+              type: 'candidate',
+              candidate: candidate,
+              from: userIdInput.value,
+              to: calleeIdInput.value,
+            });
           });
-          log('ICE candidate sent.');
+          log('All buffered ICE candidates sent.');
+          iceCandidatesBuffer = []; // Clear buffer after sending
+          hideLoading();
         }
       };
 
@@ -183,9 +190,7 @@
       socket.on('signal', async (data) => {
         log('Signal received of type: ' + data.type);
         if (data.type === 'offer') {
-          await peerConnection.setRemoteDescription(
-            new RTCSessionDescription(data)
-          );
+          await peerConnection.setRemoteDescription(data);
           const answer = await peerConnection.createAnswer();
           await peerConnection.setLocalDescription(answer);
           socket.emit('signal', {
@@ -196,15 +201,16 @@
           });
           log('Received offer, created answer, and sent back.');
         } else if (data.type === 'answer') {
-          await peerConnection.setRemoteDescription(
-            new RTCSessionDescription(data)
-          );
+          await peerConnection.setRemoteDescription(data);
           log('Received answer and set as remote description.');
         } else if (data.type === 'candidate') {
-          await peerConnection.addIceCandidate(
-            new RTCIceCandidate(data.candidate)
-          );
-          log('Received and added ICE candidate.');
+          if (peerConnection.remoteDescription) {
+            await peerConnection.addIceCandidate(data.candidate);
+            log('Received and added ICE candidate.');
+          } else {
+            log('Remote description not set yet, buffering candidate.');
+            iceCandidatesBuffer.push(data.candidate);
+          }
         }
       });
     </script>
