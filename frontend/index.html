@@ -82,7 +82,7 @@
 
       document.getElementById('hangup').addEventListener('click', () => {
         peerConnection.close();
-        localStream.getTracks().forEach((track) => track.stop());
+        // localStream.getTracks().forEach((track) => track.stop());
         log('Call ended.');
       });
 
