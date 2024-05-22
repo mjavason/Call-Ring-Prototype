@@ -1,0 +1,4 @@
+1) Set your userId then register. Do the same on the recieving side. Ensure the Ids are unique.
+2) During the registration process, you might be asked to grant access to your mic, do the needful.
+3) Once you both have been registered, one side should initiate the call.
+4) Walla! Magic, you both should be able to hear each other.
