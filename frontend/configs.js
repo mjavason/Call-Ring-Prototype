@@ -72,7 +72,8 @@ const peerConnection = new RTCPeerConnection({
       credential: '',
     },
 
-    //Open Relay Project Turn Servers
+    //Premium TURN Servers. Register on https://dashboard.metered.ca/signup to get yours for free
+    //The calls with external devices will hardly connect without them
     {
       urls: 'stun:stun.relay.metered.ca:80',
     },
