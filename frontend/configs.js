@@ -8,14 +8,14 @@ const remoteAudio = document.getElementById('remoteAudio');
 const logDiv = document.getElementById('log');
 const fillIn = document.getElementById('fillIn');
 
-fillIn.addEventListener('click', ()=>{
-    userIdInput.value = 'two';
-    calleeIdInput.value = 'one';
-    
-    socket.emit('register', userIdInput.value);
-    log('Registered with ID: ' + userIdInput.value);
-    startLocalStream();
-})
+fillIn.addEventListener('click', () => {
+  userIdInput.value = 'two';
+  calleeIdInput.value = 'one';
+
+  socket.emit('register', userIdInput.value);
+  log('Registered with ID: ' + userIdInput.value);
+  startLocalStream();
+});
 
 function log(message) {
   const p = document.createElement('p');
@@ -71,30 +71,36 @@ const peerConnection = new RTCPeerConnection({
       username: '',
       credential: '',
     },
+
+    //Open Relay Project Turn Servers
     {
-      urls: 'turn:numb.viagenie.ca',
-      username: 'webrtc@live.com',
-      credential: 'password',
+      urls: 'stun:stun.relay.metered.ca:80',
     },
     {
-      urls: 'turn:numb.viagenie.ca:3478',
-      username: 'webrtc@live.com',
-      credential: 'password',
+      urls: 'turn:global.relay.metered.ca:80',
+      username: '5dde2d2045285ff71a3bfabd',
+      credential: 'ePktKiKENLHvMBA4',
     },
     {
-      urls: 'turn:turn.bistri.com:80',
-      username: 'homeo',
-      credential: 'homeo',
+      urls: 'turn:global.relay.metered.ca:80?transport=tcp',
+      username: '5dde2d2045285ff71a3bfabd',
+      credential: 'ePktKiKENLHvMBA4',
     },
     {
-      urls: 'turn:turn.bistri.com:3478',
-      username: 'homeo',
-      credential: 'homeo',
+      urls: 'turn:global.relay.metered.ca:443',
+      username: '5dde2d2045285ff71a3bfabd',
+      credential: 'ePktKiKENLHvMBA4',
     },
     {
-      urls: 'turn:turn.anyfirewall.com:443',
-      username: 'webrtc',
-      credential: 'webrtc',
+      urls: 'turns:global.relay.metered.ca:443?transport=tcp',
+      username: '5dde2d2045285ff71a3bfabd',
+      credential: 'ePktKiKENLHvMBA4',
     },
+    // Express turn
+    // {
+    //   urls: 'relay1.expressturn.com:3478',
+    //   username: 'efYNM7FLFH0TGPR1RA',
+    //   credential: 'Wcyy9dXmtIakraMH',
+    // },
   ],
 });
