@@ -18,10 +18,9 @@ fillIn.addEventListener('click', () => {
 });
 
 function log(message) {
-  const p = document.createElement('p');
-  p.textContent = message;
-  logDiv.appendChild(p);
-  logDiv.scrollTop = logDiv.scrollHeight; // Scroll to the bottom
+  const logDiv = document.getElementById('log');
+  logDiv.innerHTML += message + '<br>';
+  logDiv.scrollTop = logDiv.scrollHeight;
 }
 
 const peerConnection = new RTCPeerConnection({

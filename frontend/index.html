@@ -12,6 +12,16 @@
         overflow-y: scroll;
         margin: 10px 0;
       }
+      #incoming-call {
+        display: none;
+        border: 1px solid #000;
+        padding: 10px;
+        background-color: #f0f0f0;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
     </style>
   </head>
   <body>
@@ -25,6 +35,12 @@
     <audio id="localAudio" autoplay muted></audio>
     <audio id="remoteAudio" autoplay></audio>
     <div id="log"></div>
+
+    <div id="incoming-call">
+      <p>Incoming call from <span id="caller-id"></span></p>
+      <button id="accept">Accept</button>
+      <button id="decline">Decline</button>
+    </div>
 
     <script src="configs.js"></script>
     <script>
@@ -46,8 +62,8 @@
       }
 
       document.getElementById('register').addEventListener('click', () => {
-        socket.emit('register', userIdInput.value);
-        log('Registered with ID: ' + userIdInput.value);
+        socket.emit('register', document.getElementById('userId').value);
+        log('Registered with ID: ' + document.getElementById('userId').value);
         startLocalStream();
       });
 
@@ -60,10 +76,13 @@
         socket.emit('signal', {
           type: 'offer',
           sdp: peerConnection.localDescription.sdp,
-          from: userIdInput.value,
-          to: calleeIdInput.value,
+          from: document.getElementById('userId').value,
+          to: document.getElementById('calleeId').value,
         });
-        log('Offer sent to callee ID: ' + calleeIdInput.value);
+        log(
+          'Offer sent to callee ID: ' +
+            document.getElementById('calleeId').value
+        );
       });
 
       document.getElementById('hangup').addEventListener('click', () => {
@@ -77,16 +96,28 @@
           socket.emit('signal', {
             type: 'candidate',
             candidate: event.candidate,
-            from: userIdInput.value,
-            to: calleeIdInput.value,
+            from: document.getElementById('userId').value,
+            to: document.getElementById('calleeId').value,
           });
           log('ICE candidate sent.');
         }
       };
 
       peerConnection.ontrack = (event) => {
-        remoteAudio.srcObject = event.streams[0];
+        document.getElementById('remoteAudio').srcObject = event.streams[0];
         log('Remote stream received.');
+      };
+
+      peerConnection.onconnectionstatechange = () => {
+        if (
+          peerConnection.connectionState === 'disconnected' ||
+          peerConnection.connectionState === 'closed'
+        ) {
+          log('Peer connection closed or disconnected.');
+          peerConnection.close();
+          localStream.getTracks().forEach((track) => track.stop());
+          log('Call ended and local stream stopped.');
+        }
       };
 
       socket.on('signal', async (data) => {
@@ -95,15 +126,33 @@
           await peerConnection.setRemoteDescription(
             new RTCSessionDescription(data)
           );
-          const answer = await peerConnection.createAnswer();
-          await peerConnection.setLocalDescription(answer);
-          socket.emit('signal', {
-            type: 'answer',
-            sdp: peerConnection.localDescription.sdp,
-            to: data.from,
-            from: userIdInput.value,
-          });
-          log('Received offer, created answer, and sent back.');
+          document.getElementById('incoming-call').style.display = 'block';
+          document.getElementById('caller-id').textContent = data.from;
+
+          document.getElementById('accept').onclick = async () => {
+            document.getElementById('incoming-call').style.display = 'none';
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            socket.emit('signal', {
+              type: 'answer',
+              sdp: peerConnection.localDescription.sdp,
+              to: data.from,
+              from: document.getElementById('userId').value,
+            });
+            log('Received offer, created answer, and sent back.');
+          };
+
+          document.getElementById('decline').onclick = () => {
+            socket.emit('message', {
+              type: 'decline',
+              message: 'Line busy',
+              to: data.from,
+              from: document.getElementById('userId').value,
+            });
+
+            document.getElementById('incoming-call').style.display = 'none';
+            log('Call declined.');
+          };
         } else if (data.type === 'answer') {
           await peerConnection.setRemoteDescription(
             new RTCSessionDescription(data)
@@ -114,6 +163,15 @@
             new RTCIceCandidate(data.candidate)
           );
           log('Received and added ICE candidate.');
+        }
+      });
+
+      socket.on('message', async (data) => {
+        log('Signal received of type: ' + data.type);
+        if (data.type === 'decline') {
+          peerConnection.close();
+          log(data.message);
+          log('Call ended and local stream stopped.');
         }
       });
     </script>

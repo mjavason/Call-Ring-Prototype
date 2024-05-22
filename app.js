@@ -43,16 +43,23 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Handle call decline
+  socket.on('message', (data) => {
+    console.log('Message to: ', socket.userId);
+    const recipientSocketId = users[data.to];
+    io.to(recipientSocketId).emit('message', data);
+  });
+
   // Handle disconnection
   socket.on('disconnect', () => {
     console.log('A user disconnected:', socket.userId);
     delete users[socket.userId];
   });
 
-  // // Catch-all event listener
-  // socket.onAny((event, ...args) => {
-  //   console.log(`Received event: ${event}`, args);
-  // });
+  // Catch-all event listener
+  socket.onAny((event, ...args) => {
+    console.log(`Received event: ${event}`, args);
+  });
 
   // Error handling
   socket.on('error', (error) => {
