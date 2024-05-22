@@ -10,6 +10,7 @@ const incomingCallDiv = document.getElementById('incoming-call');
 const callerIdSpan = document.getElementById('caller-id');
 const acceptButton = document.getElementById('accept');
 const declineButton = document.getElementById('decline');
+const fillIn = document.getElementById('fillIn');
 
 const log = (message) => {
   logDiv.innerHTML += message + '<br>';

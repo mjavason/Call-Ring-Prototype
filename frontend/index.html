@@ -55,15 +55,14 @@
           localStream
             .getTracks()
             .forEach((track) => peerConnection.addTrack(track, localStream));
-          log('Local stream started');
         } catch (error) {
-          log('Error accessing media devices: ' + error);
+          log('Error accessing audio devices.');
         }
       };
 
       document.getElementById('register').addEventListener('click', () => {
         socket.emit('register', userIdInput.value);
-        log('Registered with ID: ' + userIdInput.value);
+        log('Registered successfully.');
         startLocalStream();
       });
 
@@ -72,20 +71,19 @@
           offerToReceiveAudio: 1,
         });
         await peerConnection.setLocalDescription(offer);
-        log('Call initiated. Offer created and set as local description.');
         socket.emit('signal', {
           type: 'offer',
           sdp: peerConnection.localDescription.sdp,
           from: userIdInput.value,
           to: calleeIdInput.value,
         });
-        log('Offer sent to callee ID: ' + calleeIdInput.value);
+        log('Calling...');
       });
 
       document.getElementById('hangup').addEventListener('click', () => {
         peerConnection.close();
         localStream.getTracks().forEach((track) => track.stop());
-        log('Call ended and local stream stopped.');
+        log('Call ended.');
       });
 
       peerConnection.onicecandidate = (event) => {
@@ -96,13 +94,12 @@
             from: userIdInput.value,
             to: calleeIdInput.value,
           });
-          log('ICE candidate sent.');
         }
       };
 
       peerConnection.ontrack = (event) => {
         remoteAudio.srcObject = event.streams[0];
-        log('Remote stream received.');
+        log('Connected.');
       };
 
       peerConnection.onconnectionstatechange = () => {
@@ -110,22 +107,20 @@
           peerConnection.connectionState === 'disconnected' ||
           peerConnection.connectionState === 'closed'
         ) {
-          log('Peer connection closed or disconnected.');
           peerConnection.close();
-          localStream.getTracks().forEach((track) => track.stop());
-          log('Call ended and local stream stopped.');
+          // localStream.getTracks().forEach((track) => track.stop());
+          log('Call ended.');
         }
       };
 
       socket.on('signal', async (data) => {
-        // log('Signal received of type: ' + data.type);
         if (data.type === 'offer') {
           await peerConnection.setRemoteDescription(
             new RTCSessionDescription(data)
           );
-
           incomingCallDiv.style.display = 'block';
           callerIdSpan.textContent = data.from;
+          log('Ringing...');
 
           acceptButton.onclick = async () => {
             incomingCallDiv.style.display = 'none';
@@ -137,39 +132,35 @@
               to: data.from,
               from: userIdInput.value,
             });
-            log('Received offer, created answer, and sent back.');
+            log('Call connected.');
           };
 
           declineButton.onclick = () => {
             socket.emit('message', {
               type: 'decline',
-              message: 'Line busy',
+              message: 'Line busy! Called declined.',
               to: data.from,
               from: userIdInput.value,
             });
             incomingCallDiv.style.display = 'none';
-            localStream.getTracks().forEach((track) => track.stop());
             log('Call declined.');
           };
         } else if (data.type === 'answer') {
           await peerConnection.setRemoteDescription(
             new RTCSessionDescription(data)
           );
-          log('Received answer and set as remote description.');
+          log('Call connected.');
         } else if (data.type === 'candidate') {
           await peerConnection.addIceCandidate(
             new RTCIceCandidate(data.candidate)
           );
-          log('Received and added ICE candidate.');
         }
       });
 
       socket.on('message', (data) => {
-        log('Signal received of type: ' + data.type);
         if (data.type === 'decline') {
           peerConnection.close();
           log(data.message);
-          log('Call ended and local stream stopped.');
         }
       });
     </script>
