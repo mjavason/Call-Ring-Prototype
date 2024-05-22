@@ -1,12 +1,20 @@
-// const socket = io('http://localhost:3000');
-const socket = io('https://call-ring-prototype-backend.onrender.com');
+const socket = io('http://localhost:3000');
+// const socket = io('https://call-ring-prototype-backend.onrender.com');
 
 const userIdInput = document.getElementById('userId');
 const calleeIdInput = document.getElementById('calleeId');
 const localAudio = document.getElementById('localAudio');
 const remoteAudio = document.getElementById('remoteAudio');
 const logDiv = document.getElementById('log');
-const fillIn = document.getElementById('fillIn');
+const incomingCallDiv = document.getElementById('incoming-call');
+const callerIdSpan = document.getElementById('caller-id');
+const acceptButton = document.getElementById('accept');
+const declineButton = document.getElementById('decline');
+
+const log = (message) => {
+  logDiv.innerHTML += message + '<br>';
+  logDiv.scrollTop = logDiv.scrollHeight;
+};
 
 fillIn.addEventListener('click', () => {
   userIdInput.value = 'two';
@@ -16,12 +24,6 @@ fillIn.addEventListener('click', () => {
   log('Registered with ID: ' + userIdInput.value);
   startLocalStream();
 });
-
-function log(message) {
-  const logDiv = document.getElementById('log');
-  logDiv.innerHTML += message + '<br>';
-  logDiv.scrollTop = logDiv.scrollHeight;
-}
 
 const peerConnection = new RTCPeerConnection({
   iceServers: [

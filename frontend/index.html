@@ -46,7 +46,7 @@
     <script>
       let localStream;
 
-      async function startLocalStream() {
+      const startLocalStream = async () => {
         try {
           localStream = await navigator.mediaDevices.getUserMedia({
             audio: true,
@@ -59,11 +59,11 @@
         } catch (error) {
           log('Error accessing media devices: ' + error);
         }
-      }
+      };
 
       document.getElementById('register').addEventListener('click', () => {
-        socket.emit('register', document.getElementById('userId').value);
-        log('Registered with ID: ' + document.getElementById('userId').value);
+        socket.emit('register', userIdInput.value);
+        log('Registered with ID: ' + userIdInput.value);
         startLocalStream();
       });
 
@@ -76,13 +76,10 @@
         socket.emit('signal', {
           type: 'offer',
           sdp: peerConnection.localDescription.sdp,
-          from: document.getElementById('userId').value,
-          to: document.getElementById('calleeId').value,
+          from: userIdInput.value,
+          to: calleeIdInput.value,
         });
-        log(
-          'Offer sent to callee ID: ' +
-            document.getElementById('calleeId').value
-        );
+        log('Offer sent to callee ID: ' + calleeIdInput.value);
       });
 
       document.getElementById('hangup').addEventListener('click', () => {
@@ -96,15 +93,15 @@
           socket.emit('signal', {
             type: 'candidate',
             candidate: event.candidate,
-            from: document.getElementById('userId').value,
-            to: document.getElementById('calleeId').value,
+            from: userIdInput.value,
+            to: calleeIdInput.value,
           });
           log('ICE candidate sent.');
         }
       };
 
       peerConnection.ontrack = (event) => {
-        document.getElementById('remoteAudio').srcObject = event.streams[0];
+        remoteAudio.srcObject = event.streams[0];
         log('Remote stream received.');
       };
 
@@ -121,36 +118,37 @@
       };
 
       socket.on('signal', async (data) => {
-        log('Signal received of type: ' + data.type);
+        // log('Signal received of type: ' + data.type);
         if (data.type === 'offer') {
           await peerConnection.setRemoteDescription(
             new RTCSessionDescription(data)
           );
-          document.getElementById('incoming-call').style.display = 'block';
-          document.getElementById('caller-id').textContent = data.from;
 
-          document.getElementById('accept').onclick = async () => {
-            document.getElementById('incoming-call').style.display = 'none';
+          incomingCallDiv.style.display = 'block';
+          callerIdSpan.textContent = data.from;
+
+          acceptButton.onclick = async () => {
+            incomingCallDiv.style.display = 'none';
             const answer = await peerConnection.createAnswer();
             await peerConnection.setLocalDescription(answer);
             socket.emit('signal', {
               type: 'answer',
               sdp: peerConnection.localDescription.sdp,
               to: data.from,
-              from: document.getElementById('userId').value,
+              from: userIdInput.value,
             });
             log('Received offer, created answer, and sent back.');
           };
 
-          document.getElementById('decline').onclick = () => {
+          declineButton.onclick = () => {
             socket.emit('message', {
               type: 'decline',
               message: 'Line busy',
               to: data.from,
-              from: document.getElementById('userId').value,
+              from: userIdInput.value,
             });
-
-            document.getElementById('incoming-call').style.display = 'none';
+            incomingCallDiv.style.display = 'none';
+            localStream.getTracks().forEach((track) => track.stop());
             log('Call declined.');
           };
         } else if (data.type === 'answer') {
@@ -166,7 +164,7 @@
         }
       });
 
-      socket.on('message', async (data) => {
+      socket.on('message', (data) => {
         log('Signal received of type: ' + data.type);
         if (data.type === 'decline') {
           peerConnection.close();
