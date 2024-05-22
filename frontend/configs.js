@@ -1,5 +1,5 @@
-const socket = io('http://localhost:3000');
-// const socket = io('https://call-ring-prototype-backend.onrender.com');
+// const socket = io('http://localhost:3000');
+const socket = io('https://call-ring-prototype-backend.onrender.com');
 
 const userIdInput = document.getElementById('userId');
 const calleeIdInput = document.getElementById('calleeId');
