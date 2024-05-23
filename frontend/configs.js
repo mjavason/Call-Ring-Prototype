@@ -22,7 +22,7 @@ fillIn.addEventListener('click', () => {
   calleeIdInput.value = 'one';
 
   socket.emit('register', userIdInput.value);
-  log('Registered with ID: ' + userIdInput.value);
+  log('Registered successfully.');
   startLocalStream();
 });
 
